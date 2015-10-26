@@ -36,8 +36,8 @@ def generate_overview(df):
       ...
     ]
   """
-  total_contracts = df['CODIGO_CONTRATO'].nunique()
-  total_spent = (int(df['IMPORTE_CONTRATO'].sum()) / 1000000)
+  total_contracts = df['contract_id'].nunique()
+  total_spent = (int(df['contract_value_amount'].sum()) / 1000000)
 
 
   overview = [
@@ -55,11 +55,11 @@ def generate_overview(df):
                 },
                 {
                   'label': 'Most active supplier',
-                  'value': df['PROVEEDOR_CONTRATISTA'].value_counts().index[0]
+                  'value': df['award_suppliers_0_name'].value_counts().index[0]
                 },
                 {
                   'label': 'Most active buyer',
-                  'value': df['DEPENDENCIA'].value_counts().index[0]
+                  'value': df['buyer_name'].value_counts().index[0]
                 }
               ]
 
@@ -95,8 +95,8 @@ def contracts_time(df):
                 }
 
   # Prep the dataframe
-  chart_df = df.loc[:,['FECHA_INICIO','CODIGO_CONTRATO']].set_index('FECHA_INICIO')
-  chart_df = chart_df.groupby(pd.Grouper(level='FECHA_INICIO',freq='1M')).CODIGO_CONTRATO.nunique()
+  chart_df = df.loc[:,['contract_period_startDate','contract_id']].set_index('contract_period_startDate')
+  chart_df = chart_df.groupby(pd.Grouper(level='contract_period_startDate',freq='1M')).contract_id.nunique()
 
   # Calculate the data
   # Improve this. Shouldn't have to use iterrows
@@ -145,8 +145,8 @@ def amount_time(df):
                 }
 
   # Prep the dataframe
-  chart_df = df.loc[:,['FECHA_INICIO','IMPORTE_CONTRATO']].set_index('FECHA_INICIO')
-  xdf = chart_df.groupby(pd.Grouper(level='FECHA_INICIO',freq='1M')).sum()
+  chart_df = df.loc[:,['contract_period_startDate','contract_value_amount']].set_index('contract_period_startDate')
+  xdf = chart_df.groupby(pd.Grouper(level='contract_period_startDate',freq='1M')).sum()
 
   # Calculate the data
   # Improve this. Shouldn't have to use iterrows
@@ -191,9 +191,9 @@ def average_timeline(df):
   # Prep the dataframe
 
   # To calculate a correct mean, we convert the timedelta to hours
-  p1 = (df['FECHA_APERTURA_PROPOSICIONES'] - df['PROC_F_PUBLICACION']).astype('timedelta64[h]')
-  p2 = (df['EXP_F_FALLO'] - df['FECHA_APERTURA_PROPOSICIONES']).astype('timedelta64[h]')
-  p3 = (df['FECHA_INICIO'] - df['EXP_F_FALLO']).astype('timedelta64[h]')
+  p1 = (df['tender_tenderPeriod_startDate'] - df['tender_publicationDate']).astype('timedelta64[h]')
+  p2 = (df['award_date'] - df['tender_tenderPeriod_startDate']).astype('timedelta64[h]')
+  p3 = (df['contract_period_startDate'] - df['award_date']).astype('timedelta64[h]')
 
   # Calculate the data
   chart_data['data'].append(int(p1.mean() / 24))
@@ -228,7 +228,7 @@ def price_variation(df):
                 }
 
   # Prep the dataframe
-  s = df.loc[:,['IMPORTE_CONTRATO']]
+  s = df.loc[:,['contract_value_amount']]
 
   # Calculate the data
   qr1 = int(s.quantile(0.25))
@@ -283,15 +283,15 @@ def price_distribution(df):
 
   # Prep the dataframe
   # Cut off data above 95 percentile
-  df_perc = df[(df['IMPORTE_CONTRATO'] <= df['IMPORTE_CONTRATO'].quantile(.95))]
-  maxcontr = df_perc['IMPORTE_CONTRATO'].max()
+  df_perc = df[(df['contract_value_amount'] <= df['contract_value_amount'].quantile(.95))]
+  maxcontr = df_perc['contract_value_amount'].max()
   
   # Determine bins
   # Equally spaced bins
   bin_limits = np.arange(0, int(maxcontr) +1, int(maxcontr / 10))
 
   # Generate the chart data
-  binned = pd.cut(df_perc['IMPORTE_CONTRATO'], bin_limits, labels=False)
+  binned = pd.cut(df_perc['contract_value_amount'], bin_limits, labels=False)
   dist = pd.value_counts(binned).sort_index()
   chart_data['data'] = dist.tolist()
 
@@ -321,19 +321,19 @@ def top_contracts(df):
 
   chart_data = { 'data': [] }
 
-  top_df = df.sort(columns='IMPORTE_CONTRATO', ascending=False)[:5]
+  top_df = df.sort(columns='contract_value_amount', ascending=False)[:5]
   
   for ind, row in top_df.iterrows():
     top_contract = [
                       {
-                        'value': row['SIGLAS'],
-                        'tooltip': row['DEPENDENCIA']
+                        'value': row['buyer_abbreviation'],
+                        'tooltip': row['buyer_name']
                       },
                       {
-                        'value': row['PROVEEDOR_CONTRATISTA']
+                        'value': row['award_suppliers_0_name']
                       },
                       {
-                        'value': int(row['IMPORTE_CONTRATO']),
+                        'value': int(row['contract_value_amount']),
                         'format': 'amount|million'
                       }
                     ]
@@ -369,25 +369,26 @@ def relationships(df):
                 }
 
   # Prep the dataframe
-  df_buyer = df.groupby('SIGLAS')
+  df_buyer = df.groupby('buyer_abbreviation')
   
   # Calculate the data
   for name, group in df_buyer:
     sdata = {}
-    sdata['name'] = str(group['DEPENDENCIA'].iloc[0])
-    sdata['suppliers'] = group['PROVEEDOR_CONTRATISTA'].nunique()
-    sdata['contracts'] = group['CODIGO_CONTRATO'].nunique()
-    sdata['amount'] = int(group['IMPORTE_CONTRATO'].sum())
+    #print str(group['buyer_name'].iloc[0])
+    sdata['name'] = group['buyer_name'].iloc[0]
+    sdata['suppliers'] = group['award_suppliers_0_name'].nunique()
+    sdata['contracts'] = group['contract_id'].nunique()
+    sdata['amount'] = int(group['contract_value_amount'].sum())
     chart_data['data'].append(sdata)
   
 
   # Calculate the domains
-  minx = int(df_buyer['IMPORTE_CONTRATO'].sum().min())
-  maxx = int(df_buyer['IMPORTE_CONTRATO'].sum().max())
-  miny = df_buyer['PROVEEDOR_CONTRATISTA'].nunique().min()
-  maxy = df_buyer['PROVEEDOR_CONTRATISTA'].nunique().max()
-  minr = df_buyer['CODIGO_CONTRATO'].nunique().min()
-  maxr = df_buyer['CODIGO_CONTRATO'].nunique().max()
+  minx = int(df_buyer['contract_value_amount'].sum().min())
+  maxx = int(df_buyer['contract_value_amount'].sum().max())
+  miny = df_buyer['award_suppliers_0_name'].nunique().min()
+  maxy = df_buyer['award_suppliers_0_name'].nunique().max()
+  minr = df_buyer['contract_id'].nunique().min()
+  maxr = df_buyer['contract_id'].nunique().max()
   
   chart_data['domain']['x'] = [minx, maxx]
   chart_data['domain']['y'] = [miny, maxy]
@@ -421,21 +422,21 @@ def concentration_winning(df):
                 }
 
   # Prep the dataframe
-  df_supplier = df.groupby('PROVEEDOR_CONTRATISTA')
+  df_supplier = df.groupby('award_suppliers_0_name')
   
   # Calculate the data
   for name, group in df_supplier:
     sdata = {}
-    sdata['name'] = str(group['PROVEEDOR_CONTRATISTA'].iloc[0])
-    sdata['contracts'] = group['CODIGO_CONTRATO'].nunique()
-    sdata['amount'] = int(group['IMPORTE_CONTRATO'].sum())
+    sdata['name'] = str(group['award_suppliers_0_name'].iloc[0])
+    sdata['contracts'] = group['contract_id'].nunique()
+    sdata['amount'] = int(group['contract_value_amount'].sum())
     chart_data['data'].append(sdata)
   
   # Calculate the domains
-  minx = int(df_supplier['IMPORTE_CONTRATO'].sum().min())
-  maxx = int(df_supplier['IMPORTE_CONTRATO'].sum().max())
-  miny = df_supplier['CODIGO_CONTRATO'].nunique().min()
-  maxy = df_supplier['CODIGO_CONTRATO'].nunique().max()
+  minx = int(df_supplier['contract_value_amount'].sum().min())
+  maxx = int(df_supplier['contract_value_amount'].sum().max())
+  miny = df_supplier['contract_id'].nunique().min()
+  maxy = df_supplier['contract_id'].nunique().max()
   
   chart_data['domain']['x'] = [minx, maxx]
   chart_data['domain']['y'] = [miny, maxy]

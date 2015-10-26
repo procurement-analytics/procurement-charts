@@ -11,7 +11,7 @@ import domains
 folder_charts = './data/export/charts'
 
 # This is used to date the contracts for the charts on the summary page
-main_date_contract = 'FECHA_INICIO'
+main_date_contract = 'contract_period_startDate'
 start_date_charts = '2011-01-01'
 end_date_charts = '2015-07-31'
 
@@ -38,16 +38,16 @@ comparisons = [
   },
   { 
     'id': 'contract-procedure',
-    'compare': 'TIPO_PROCEDIMIENTO',
+    'compare': 'tender_procurementMethod',
     'slices': [
-      {'id': 'lic-publica', 'label': 'Licitación Pública', 'field': 'Licitacion Publica'},
-      {'id': 'adj-directa', 'label': 'Adjudicación Directa Federal', 'field': 'Adjudicacion Directa Federal'},
-      {'id': 'invitacion', 'label': 'Invitación a Cuando Menos 3 Personas', 'field': 'Invitacion a Cuando Menos 3 Personas'}
+      {'id': 'lic-publica', 'label': 'Licitación Pública', 'field': 'open'},
+      {'id': 'adj-directa', 'label': 'Adjudicación Directa Federal', 'field': 'limited'},
+      {'id': 'invitacion', 'label': 'Invitación a Cuando Menos 3 Personas', 'field': 'selective'}
     ]
   },
   { 
     'id': 'size-supplier',
-    'compare': 'ESTRATIFICACION_MUC',
+    'compare': 'award_suppliers_0_sizeSupplier',
     'slices': [
       {'id': 'micro-supplier', 'label': 'Micro', 'field': 'Micro'},
       {'id': 'small-supplier', 'label': 'Small', 'field': 'Pequeña'},
@@ -57,7 +57,7 @@ comparisons = [
   },
   { 
     'id': 'contract-type',
-    'compare': 'TIPO_CONTRATACION',
+    'compare': 'tender_description',
     'slices': [
       {'id': 'adquisiciones', 'label': 'Adquisiciones', 'field': 'Adquisiciones'},
       {'id': 'op', 'label': 'Obra Pública', 'field': 'Obra Pública'},
